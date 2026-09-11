@@ -1,0 +1,7 @@
+# Normalise text files to LF in the repository, native line endings on checkout.
+* text=auto
+
+# Never touch these. A CRLF conversion would corrupt the database.
+*.db binary
+*.sqlite binary
+*.sqlite3 binary

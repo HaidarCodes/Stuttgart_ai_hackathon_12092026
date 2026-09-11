@@ -1,0 +1,20 @@
+.env
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# SQLite sidecar files. The database itself is tracked, these are not.
+*.db-journal
+*.db-wal
+*.db-shm
+
+# organiser-only material, never tracked here
+jury/
+slides.md
