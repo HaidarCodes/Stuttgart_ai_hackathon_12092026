@@ -1,0 +1,58 @@
+pages: 5
+--- page 1 ---
+FROM SYSTEM OF RECORDS TO SYSTEM OF 
+CONTEXT
+LUDWIGSBURG, 12.09.2026
+--- page 2 ---
+© MHP Management- und IT-Beratung GmbH
+Your database knows everything. It understands 
+nothing.
+RBKP
+BELNR       LIFNR       BUDAT     RMWWR      WAERS  STAT_KZ
+0005100009  0000100812  20250312  182640.00  EUR    50
+0005100001  0000100483  20250718  130224.00  EUR    34
+0005100008  0000100847  20250428   64158.98  EUR    70
+0005100002  0000100238  20251031   10956.00  EUR    60
+0005100006  0000101309  20250929  117912.00  EUR    80
+What do these numbers mean?
+“Which supplier invoices are stuck,
+and how much money is tied up in 
+them?”
+Accounts Payable · every month since 2011
+--- page 3 ---
+© MHP Management- und IT-Beratung GmbH
+From System of Records to System of Context
+↑  THE GAP YOU ARE CLOSING
+LANGUAGE    “Which invoices are stuck?”
+PROCESS     recorded  →  VERIFICATION  →  released  →  paid
+RECORDS     RBKP .STAT_KZ = '??'
+1,998,331,067 EUR open order volume
+394,630,962,907 EUR the same question, answered straight from the schema
+Same question. Same database. Factor 197.
+--- page 4 ---
+© MHP Management- und IT-Beratung GmbH
+Everything is in the repo. Setup is five minutes.
+SignalContentsAssetPath
+No server · no DockerSQLite · 1,274 tables · 310k rowserp_legacy.dbdata/
+Maybe · 95k tokens14 candidate tables · DDL for all 1,274 tablesschema.sql
+schema_full.sqldata/
+Last revised 2018Official catalogueGLOSSARY.mdcontext/
+Business languageHow the business describes the processPROCESS.mdcontext/
+Contradictions included43 support tickets · AP and Procurement mail threadstickets.jsonl
+emails.mdcontext/
+Starting point + enemy15 verified Q&As · naive text-to-SQL baselinequestions.md 
+baseline.pyroot/
+NORTH STAR · Answer live: Which supplier invoices are currently stuck, how much money is tied up in them, and why?
+--- page 5 ---
+© MHP Management- und IT-Beratung GmbH
+Your demo: five minutes, live, no slides.
+“Here are the invoices, here is the rule I applied,
+and here is the source I learned it from”
+…beats a number on its own — even when the number is identical.
+What winning looks likeWeightCriterion
+Are the answers right? Did you spot the contradictions?35%Context quality
+We ask questions you have not seen.25%Generalisation
+Does it work on all 1,274 tables, not just the extract? We will ask you to try.20%Scalability
+Convince the woman in Accounts Payable.20%Demo & value
+Hard stop on features: 15:00   ·   Live demos: 15:30
+Provenance is not a nice-to-have here. It is the product.

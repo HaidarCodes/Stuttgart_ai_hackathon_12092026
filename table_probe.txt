@@ -1,0 +1,164 @@
+EKPO_BAK	rows=15853	overlaps={'EBELN': (4538, 4538), 'MATNR': (2000, 2000)}
+ZTSTAT_OLD	rows=15450	overlaps={}
+MSEG_SHADOW	rows=12305	overlaps={'EBELN': (3691, 3691), 'MATNR': (1995, 1995)}
+ZTSTAT_ARCH	rows=11841	overlaps={}
+RSEG_BAK	rows=7527	overlaps={'EBELN': (2254, 2254), 'MATNR': (1943, 1943), 'BELNR': (2254, 2254)}
+RBKP_ARCH	rows=6500	overlaps={'LIFNR': (340, 340), 'BELNR': (6500, 0)}
+EKKO_BAK	rows=5250	overlaps={'EBELN': (5250, 5250), 'LIFNR': (340, 340)}
+RBKP_SHADOW	rows=3592	overlaps={'LIFNR': (340, 340), 'BELNR': (3592, 3592)}
+ZEKKO_MIG	rows=2250	overlaps={'EBELN': (2250, 2250), 'LIFNR': (340, 340)}
+ZRBKP_STG	rows=1077	overlaps={'LIFNR': (329, 329), 'BELNR': (1077, 1077)}
+MARA_BAK	rows=1000	overlaps={'MATNR': (1000, 1000)}
+BKPF_ARCH	rows=884	overlaps={'BELNR': (884, 0)}
+ZM_STG_54	rows=595	overlaps={}
+T106	rows=590	overlaps={}
+ZM_IMP_96	rows=584	overlaps={}
+MAST	rows=577	overlaps={}
+T188D	rows=574	overlaps={'LIFNR': (574, 0), 'MATNR': (574, 0), 'BELNR': (574, 0)}
+T937C	rows=571	overlaps={'BELNR': (570, 0)}
+T447C	rows=571	overlaps={'LIFNR': (571, 0)}
+T102D	rows=568	overlaps={'BELNR': (568, 0)}
+CSKS	rows=550	overlaps={}
+T830A	rows=548	overlaps={'BELNR': (548, 0)}
+ZT_CUST_40	rows=546	overlaps={}
+COSP	rows=546	overlaps={'LIFNR': (546, 0)}
+ZF_KPI_09	rows=533	overlaps={'LIFNR': (533, 0)}
+ZS_TRACE_46	rows=530	overlaps={'MATNR': (530, 0), 'BELNR': (530, 0)}
+ZS_TMP_69	rows=520	overlaps={}
+ZT_PARAM_73	rows=519	overlaps={'BELNR': (519, 0)}
+ZF_AUDIT_56	rows=515	overlaps={'BELNR': (515, 0)}
+ZZ_XREF_04	rows=514	overlaps={}
+ZT_BATCH_60	rows=512	overlaps={}
+T771C	rows=507	overlaps={}
+ZM_CUST_13	rows=502	overlaps={'LIFNR': (502, 0)}
+ZM_VAL_81	rows=499	overlaps={'LIFNR': (499, 0), 'BELNR': (499, 0)}
+T592C	rows=498	overlaps={'BELNR': (498, 0)}
+T301	rows=495	overlaps={}
+CRHD	rows=494	overlaps={'LIFNR': (494, 0)}
+MARD	rows=491	overlaps={'LIFNR': (491, 0)}
+T957	rows=487	overlaps={}
+ZC_CTRL_15	rows=486	overlaps={}
+ZM_TMP_91	rows=486	overlaps={'LIFNR': (486, 0), 'MATNR': (486, 0)}
+T735C	rows=484	overlaps={'LIFNR': (484, 0), 'MATNR': (484, 0), 'BELNR': (484, 0)}
+T712C	rows=477	overlaps={'BELNR': (477, 0)}
+T897T	rows=476	overlaps={'MATNR': (476, 0), 'BELNR': (476, 0)}
+ZS_DUPL_53	rows=475	overlaps={}
+T567T	rows=475	overlaps={}
+ZZ_TRACE_94	rows=470	overlaps={'LIFNR': (470, 0), 'BELNR': (469, 0)}
+T194B	rows=470	overlaps={'LIFNR': (470, 0)}
+ZM_STG_15	rows=469	overlaps={'MATNR': (469, 0), 'BELNR': (469, 0)}
+ZM_STG_11	rows=468	overlaps={'LIFNR': (468, 0), 'BELNR': (468, 0)}
+ZT_MON_91	rows=467	overlaps={}
+ZT_MON_93	rows=465	overlaps={'LIFNR': (465, 0), 'MATNR': (465, 0)}
+ZC_CTRL_08	rows=461	overlaps={'MATNR': (461, 0)}
+ZF_QUEUE_61	rows=459	overlaps={'LIFNR': (459, 0), 'MATNR': (459, 0)}
+ZT_REPL_28	rows=459	overlaps={}
+ZC_SYNC_66	rows=456	overlaps={'LIFNR': (456, 0), 'BELNR': (456, 0)}
+ZM_SYNC_40	rows=449	overlaps={'MATNR': (449, 0)}
+ZZ_VAL_11	rows=437	overlaps={'MATNR': (437, 0)}
+ZT_SNAP_65	rows=436	overlaps={}
+ZF_DUPL_78	rows=429	overlaps={'LIFNR': (429, 0), 'MATNR': (429, 0), 'BELNR': (429, 0)}
+T804C	rows=429	overlaps={'MATNR': (429, 0), 'BELNR': (429, 0)}
+ZM_HIST_40	rows=425	overlaps={'LIFNR': (425, 0), 'BELNR': (424, 0)}
+ZT_TRACE_82	rows=419	overlaps={}
+ZS_CTRL_98	rows=416	overlaps={}
+ZC_MAP_90	rows=414	overlaps={'LIFNR': (414, 0)}
+T132A	rows=413	overlaps={'LIFNR': (413, 0)}
+T478C	rows=412	overlaps={}
+T652T	rows=405	overlaps={'BELNR': (405, 0)}
+T201D	rows=399	overlaps={}
+T065	rows=398	overlaps={}
+T446C	rows=383	overlaps={'MATNR': (383, 0), 'BELNR': (382, 0)}
+T260A	rows=379	overlaps={}
+T698	rows=378	overlaps={'LIFNR': (378, 0)}
+ZT_MON_52	rows=378	overlaps={}
+ZS_RECON_11	rows=372	overlaps={'MATNR': (372, 0)}
+T102T	rows=362	overlaps={'LIFNR': (362, 0)}
+ZT_CONV_09	rows=354	overlaps={}
+ZS_MIGR_79	rows=349	overlaps={}
+T727C	rows=343	overlaps={'LIFNR': (343, 0)}
+T722B	rows=343	overlaps={'LIFNR': (343, 0), 'MATNR': (343, 0)}
+ZS_PARAM_93	rows=338	overlaps={'MATNR': (338, 0), 'BELNR': (338, 0)}
+ZS_HIST_69	rows=334	overlaps={}
+ZS_BATCH_57	rows=334	overlaps={'LIFNR': (333, 0)}
+LINK	rows=333	overlaps={}
+ZC_RECON_27	rows=331	overlaps={'LIFNR': (331, 0)}
+T562D	rows=330	overlaps={'LIFNR': (330, 0), 'BELNR': (330, 0)}
+ZM_IFACE_29	rows=330	overlaps={}
+T044	rows=326	overlaps={'MATNR': (326, 0)}
+ZC_XREF_73	rows=323	overlaps={}
+T227	rows=317	overlaps={}
+ZZ_DUPL_19	rows=317	overlaps={'LIFNR': (317, 0)}
+T638B	rows=300	overlaps={'LIFNR': (300, 0), 'MATNR': (300, 0)}
+ZZ_RPT_04	rows=297	overlaps={'MATNR': (297, 0), 'BELNR': (297, 0)}
+ZS_BATCH_21	rows=297	overlaps={}
+T923B	rows=296	overlaps={'MATNR': (296, 0)}
+ZM_REPL_36	rows=293	overlaps={}
+ZT_KPI_83	rows=291	overlaps={'LIFNR': (291, 0)}
+ZF_CONV_42	rows=287	overlaps={}
+T675D	rows=280	overlaps={'MATNR': (280, 0)}
+ZZ_IFACE_81	rows=280	overlaps={}
+ZS_EXP_12	rows=278	overlaps={'LIFNR': (278, 0)}
+ZS_STG_51	rows=277	overlaps={}
+T543T	rows=276	overlaps={'MATNR': (276, 0), 'BELNR': (276, 0)}
+ZT_IMP_17	rows=268	overlaps={'BELNR': (268, 0)}
+T852B	rows=267	overlaps={'LIFNR': (267, 0), 'MATNR': (267, 0)}
+T308D	rows=266	overlaps={'MATNR': (266, 0)}
+T503	rows=265	overlaps={'MATNR': (265, 0), 'BELNR': (265, 0)}
+T522C	rows=265	overlaps={'BELNR': (265, 0)}
+ZF_CTRL_43	rows=264	overlaps={}
+ZF_SNAP_14	rows=258	overlaps={'MATNR': (258, 0), 'BELNR': (258, 0)}
+ZC_MAP_35	rows=258	overlaps={'BELNR': (258, 0)}
+T259D	rows=256	overlaps={'LIFNR': (256, 0)}
+T462A	rows=252	overlaps={'LIFNR': (252, 0), 'MATNR': (252, 0)}
+T945T	rows=251	overlaps={'LIFNR': (251, 0), 'MATNR': (251, 0)}
+ZZ_QUEUE_49	rows=241	overlaps={'MATNR': (241, 0), 'BELNR': (241, 0)}
+ZC_MAP_84	rows=241	overlaps={'LIFNR': (241, 0), 'MATNR': (241, 0)}
+ZT_VAL_88	rows=240	overlaps={'MATNR': (239, 0)}
+ZF_BATCH_28	rows=237	overlaps={'LIFNR': (237, 0)}
+T546C	rows=237	overlaps={'LIFNR': (237, 0), 'MATNR': (237, 0)}
+ZC_RPT_20	rows=236	overlaps={'BELNR': (236, 0)}
+ZS_DUPL_35	rows=227	overlaps={}
+COEP	rows=222	overlaps={'MATNR': (222, 0), 'BELNR': (222, 0)}
+LFA1_BAK	rows=187	overlaps={'LIFNR': (187, 187)}
+COKA	rows=174	overlaps={'BELNR': (174, 0)}
+T893	rows=173	overlaps={'MATNR': (173, 0), 'BELNR': (173, 0)}
+RESB	rows=162	overlaps={'MATNR': (162, 0)}
+ZF_MIGR_06	rows=161	overlaps={'LIFNR': (161, 0)}
+T635B	rows=159	overlaps={'BELNR': (159, 0)}
+ZLFA1_XREF	rows=153	overlaps={'LIFNR': (153, 153)}
+ZM_REPL_64	rows=147	overlaps={}
+MAPL	rows=143	overlaps={'LIFNR': (143, 0)}
+VBUP	rows=140	overlaps={'LIFNR': (140, 0), 'MATNR': (140, 0), 'BELNR': (140, 0)}
+ZC_PARAM_34	rows=139	overlaps={'MATNR': (139, 0)}
+T258T	rows=136	overlaps={'BELNR': (136, 0)}
+ZZ_IMP_02	rows=129	overlaps={}
+ZT_TMP_73	rows=128	overlaps={'LIFNR': (128, 0)}
+ZT_STG_55	rows=127	overlaps={'LIFNR': (127, 0), 'MATNR': (127, 0)}
+ZZ_MON_32	rows=115	overlaps={'BELNR': (115, 0)}
+ZM_SNAP_71	rows=114	overlaps={}
+T262D	rows=106	overlaps={'MATNR': (106, 0)}
+ZZ_XREF_02	rows=96	overlaps={'LIFNR': (96, 0), 'MATNR': (96, 0)}
+T342D	rows=87	overlaps={'LIFNR': (87, 0), 'BELNR': (87, 0)}
+T029A	rows=84	overlaps={}
+T189A	rows=80	overlaps={'BELNR': (80, 0)}
+QAVE	rows=75	overlaps={'MATNR': (75, 0)}
+KAZY	rows=67	overlaps={'LIFNR': (67, 0), 'MATNR': (67, 0)}
+QAMR	rows=65	overlaps={}
+T736C	rows=61	overlaps={'LIFNR': (61, 0)}
+T396C	rows=58	overlaps={}
+T736	rows=53	overlaps={'LIFNR': (53, 0)}
+ZM_MIGR_47	rows=50	overlaps={'BELNR': (50, 0)}
+ZT_SNAP_33	rows=50	overlaps={}
+ZF_ARCH_20	rows=44	overlaps={}
+ZF_REPL_83	rows=42	overlaps={}
+ZT_TRACE_88	rows=41	overlaps={'LIFNR': (41, 0)}
+ZZ_AUDIT_15	rows=41	overlaps={'MATNR': (41, 0)}
+ZC_TMP_08	rows=40	overlaps={}
+T170D	rows=40	overlaps={'LIFNR': (40, 0), 'MATNR': (40, 0)}
+ZZ_CONV_11	rows=39	overlaps={'LIFNR': (39, 0), 'MATNR': (39, 0)}
+MLAN	rows=33	overlaps={}
+ZC_SNAP_46	rows=32	overlaps={}
+ZZ_DUPL_29	rows=28	overlaps={'BELNR': (28, 0)}
+ZT_TRACE_93	rows=25	overlaps={'MATNR': (25, 0), 'BELNR': (25, 0)}
+ZZ_QUEUE_28	rows=24	overlaps={'BELNR': (24, 0)}

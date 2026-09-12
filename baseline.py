@@ -40,6 +40,9 @@ Schema:
 Answer the user's question by writing a single SQLite query.
 Return only the SQL, no explanation, no markdown fences.
 
+Here is some additional context:
+{context}
+
 Question: {question}
 """
 
@@ -58,11 +61,11 @@ def load_env():
             os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
 
 
-def ask_for_sql(client, schema, question):
+def ask_for_sql(client, schema, context, question):
     resp = client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "user",
-                   "content": PROMPT.format(schema=schema, question=question)}],
+                   "content": PROMPT.format(schema=schema, context=context, question=question)}],
         temperature=0,
     )
     sql = resp.choices[0].message.content.strip()
@@ -83,13 +86,16 @@ def main():
     with open(SCHEMA_PATH, encoding="utf-8") as fh:
         schema = fh.read()
 
+    with open("context.md", encoding="utf-8") as fh:
+        context = fh.read()
+    
     client = OpenAI()
 
     print("=" * 70)
     print("QUESTION :", question)
     print("=" * 70)
 
-    sql = ask_for_sql(client, schema, question)
+    sql = ask_for_sql(client, schema, context, question)
     print("\nGENERATED SQL\n-------------")
     print(sql)
 
