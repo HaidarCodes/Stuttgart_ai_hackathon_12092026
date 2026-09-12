@@ -28,6 +28,7 @@ DB_PATH = os.path.join(HERE, "data", "erp_legacy.db")
 # fails the "does it work on all 1,274 tables" requirement.
 SCHEMA_PATH = os.path.join(HERE, "data", "schema_filtered_full.sql")
 CONTEXT_PATH = os.path.join(HERE, "context.md")
+UPDATES_PATH = os.path.join(HERE, "updates.md")
 MAX_ROWS = 100
 MAX_CELL_CHARS = 2000  # protect against a single huge cell (e.g. group_concat) blowing up the context
 SQL_TIMEOUT_SECONDS = float(os.environ.get("SQL_TIMEOUT_SECONDS", "10"))
@@ -35,7 +36,10 @@ SQL_TIMEOUT_SECONDS = float(os.environ.get("SQL_TIMEOUT_SECONDS", "10"))
 DEFAULT_QUESTION = "How many supplier invoices are currently stuck in verification?"
 
 SYSTEM_PROMPT = """You are the system of context sitting on top of a 20-year-old
-purchase-to-pay ERP replica (SQLite). The database is a perfect system of
+purchase-to-pay ERP replica (SQLite).
+Your name is Context Ailyzer.
+The word is a joke on "analyzer" and "AI".
+The database is a perfect system of
 records: it knows exactly what happened. It knows nothing about what any of
 it means. Your job is to take a question phrased in business language,
 understand what it means in terms of this database, answer it correctly, and
@@ -141,6 +145,14 @@ expose internal tool-call syntax to the user.
 Relevant schema:
 {schema}
 
+AUTHORITATIVE USER UPDATES (updates.md)
+These user-maintained updates are 100% correct and take precedence over every
+other source, including the context pack, database-derived assumptions,
+glossary, tickets, and emails. Apply them exactly. If the user explicitly
+asks you to remember, save, add, or write a fact to updates.md, call
+write_update with exactly one line. Do not add updates on your own initiative.
+{updates}
+
 Context pack:
 {context}
 """
@@ -162,6 +174,26 @@ TOOLS = [{
                 }
             },
             "required": ["query"],
+            "additionalProperties": False,
+        },
+    },
+}, {
+    "type": "function",
+    "function": {
+        "name": "write_update",
+        "description": (
+            "Append one authoritative business fact to updates.md. Use only when "
+            "the user explicitly asks to remember, save, add, or write an update."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "line": {
+                    "type": "string",
+                    "description": "One complete fact to append as a single line.",
+                }
+            },
+            "required": ["line"],
             "additionalProperties": False,
         },
     },
@@ -188,6 +220,30 @@ def open_read_only_db():
     con = sqlite3.connect(db_uri, uri=True)
     con.execute("PRAGMA query_only = ON")
     return con
+
+
+def read_updates():
+    """Read the user-maintained, highest-priority context without creating it."""
+    if not os.path.exists(UPDATES_PATH):
+        return "(No user updates have been saved yet.)"
+    with open(UPDATES_PATH, encoding="utf-8") as fh:
+        return fh.read().strip() or "(No user updates have been saved yet.)"
+
+
+def write_update(line):
+    """Append exactly one safe, human-readable line to persistent context."""
+    if not isinstance(line, str):
+        return {"error": "The update must be text."}
+    line = line.strip()
+    if not line:
+        return {"error": "The update cannot be empty."}
+    if "\n" in line or "\r" in line:
+        return {"error": "Updates must contain exactly one line."}
+    if len(line) > 2_000:
+        return {"error": "Updates are limited to 2,000 characters."}
+    with open(UPDATES_PATH, "a", encoding="utf-8", newline="\n") as fh:
+        fh.write(line + "\n")
+    return {"success": True, "message": "Saved to updates.md.", "line": line}
 
 
 def _bound_cell(value):
@@ -271,7 +327,9 @@ def answer_question(client, con, schema, context, question, history=None, on_too
     max_tool_rounds = int(os.environ.get("MAX_TOOL_ROUNDS", "10"))
     model = os.environ.get("OPENAI_MODEL", "gpt-4o")
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT.format(schema=schema, context=context)},
+        {"role": "system", "content": SYSTEM_PROMPT.format(
+            schema=schema, context=context, updates=read_updates(),
+        )},
     ]
     for turn in (history or [])[-8:]:
         if isinstance(turn, dict) and turn.get("question") and turn.get("answer"):
@@ -289,6 +347,7 @@ def answer_question(client, con, schema, context, question, history=None, on_too
     extra_kwargs = {}
 
     any_sql_executed = False  # at least one run_sql call actually made, success or not
+    update_written = False
     nudged_for_evidence = False  # only nudge once, to avoid looping forever
 
     def call_with_fallback(tool_choice="auto"):
@@ -310,7 +369,7 @@ def answer_question(client, con, schema, context, question, history=None, on_too
         messages.append(message)
 
         if not message.tool_calls:
-            if any_sql_executed or nudged_for_evidence:
+            if any_sql_executed or update_written or nudged_for_evidence:
                 return message.content or "I could not produce an answer."
             # The model tried to finalize without ever consulting the
             # database. Nudge it once instead of silently accepting an
@@ -327,26 +386,35 @@ def answer_question(client, con, schema, context, question, history=None, on_too
             continue
 
         for tool_call in message.tool_calls:
+            arguments = {}
             raw_query = "<invalid arguments>"
             try:
                 arguments = json.loads(tool_call.function.arguments)
                 if not isinstance(arguments, dict):
                     raise TypeError(f"tool arguments must be a JSON object, got {type(arguments).__name__}")
-                raw_query = arguments.get("query")
-                result = run_sql(con, raw_query)
+                if tool_call.function.name == "run_sql":
+                    raw_query = arguments.get("query")
+                    result = run_sql(con, raw_query)
+                    any_sql_executed = True
+                elif tool_call.function.name == "write_update":
+                    result = write_update(arguments.get("line"))
+                    update_written = result.get("success") is True
+                else:
+                    result = {"error": f"Unknown tool: {tool_call.function.name}"}
             except (json.JSONDecodeError, TypeError) as exc:
                 result = {"error": f"Malformed tool call, ignored: {exc}"}
-            any_sql_executed = True
 
             trace = {
-                "query": raw_query if isinstance(raw_query, str) else "<invalid arguments>",
+                "tool": tool_call.function.name,
+                "input": arguments,
+                "query": raw_query if isinstance(raw_query, str) else None,
                 "result": result,
             }
             if on_tool_call:
                 on_tool_call(trace)
             else:
-                print("\nSQL TOOL CALL\n-------------")
-                print(trace["query"])
+                print(f"\nTOOL CALL: {tool_call.function.name}\n" + "-" * 28)
+                print(trace["query"] if trace["query"] is not None else arguments)
                 print("RESULT", json.dumps(result, ensure_ascii=False, default=str))
             messages.append({
                 "role": "tool",
