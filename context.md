@@ -14,7 +14,6 @@ with where it came from, so provenance can be reproduced:
 - `[process §N]` = `context/PROCESS.md`, business-language process description
 - `[ticket INC0xxxxx]` = `context/tickets.jsonl`
 - `[email Thread N]` = `context/emails.md`
-- `[questions.md QN]` = the verified calibration answer
 - `[DB: <query summary>]` = confirmed by directly querying `data/erp_legacy.db` (this session)
 - `[README]` / `[deck pN]` = `README.md` / `powerpoint.pdf` (task brief)
 
@@ -34,7 +33,7 @@ provenance for every number `[README]` `[deck p2-p5]`. The deck's own
 demonstration of the failure mode: the same underlying question, answered
 naively straight from the schema, produces **394,630,962,907 EUR** instead of
 the correct **1,998,331,067 EUR** - a factor of 197, caused by exactly the
-two traps documented in §6 below `[deck p3]`.
+two traps documented in §4 below `[deck p3]`.
 
 ---
 
@@ -49,9 +48,9 @@ inside `data/schema_full.sql` as well.
 |---|---|---|
 | `LIFNR` | Vendor number, 10 digits, zero-padded | PK `[glossary §1]` |
 | `NAME1` | Vendor name | **Not unique** - `[DB]` found 9 different vendors all containing "Steinwerk" in the name; only 1 of them is blocked. Never resolve a vendor by name alone, always by `LIFNR`. |
-| `LAND1` | Country (ISO) | `[glossary §1]`. `[DB]`: 177 of 340 vendors have `LAND1='DE'` - exact match to `questions.md` Q1. |
+| `LAND1` | Country (ISO) | `[glossary §1]` |
 | `ORT01` | City | `[glossary §1]` |
-| `SPERR` | **Vendor block** - blocks all future business with this vendor, company-wide, set centrally by Vendor Master Data, "usually for compliance reasons" `[glossary §1]` `[email Thread 3]`. Values seen: `''` / `'X'`. `[DB]`: exactly 29 vendors have `SPERR='X'`, matching `questions.md` Q12 exactly, including all 5 named vendors in that answer. |
+| `SPERR` | **Vendor block** - blocks all future business with this vendor, company-wide, set centrally by Vendor Master Data, "usually for compliance reasons" `[glossary §1]` `[email Thread 3]`. Values seen: `''` / `'X'`. This is the field that answers "which vendors are blocked" - a small minority of vendors have `SPERR='X'` `[DB]`. |
 | `ERDAT` | Creation date | `[glossary §1]` |
 | `KTOKK` | Account group | `[glossary §1]`, not used in any resolved question |
 
@@ -71,15 +70,15 @@ which are named similarly but are entirely different concepts (see §5).
 ### EKKO - purchase order header
 | Field | Meaning | Notes |
 |---|---|---|
-| `EBELN` | PO number, PK | `[glossary §3]`. `[DB]`: exactly 15,000 rows - matches `questions.md` Q2 with zero filtering needed. |
+| `EBELN` | PO number, PK | `[glossary §3]`. Total row count answers "how many purchase orders are there" directly - a plain `COUNT(*)`, no rule needed. |
 | `BUKRS` | Company code | "always 1000" `[glossary §3]`. Not the same thing as plant (`WERKS`, see MSEG/EKPO) - `[DB]` confirms plants are `1000`/`1100`/`2000` `[ticket INC0046433]`, a different field entirely; this is *not* a contradiction, just two similarly-numbered but distinct fields. |
-| `BSART` | Document type | See `T161` below. `[DB]` confirmed the 4 types in `questions.md` Q3 (`NB`, `UB`, `FO`, `ZRB`) exist exactly. |
+| `BSART` | Document type | See `T161` below for the code -> text mapping, confirmed by `[DB]` to match the customizing table exactly. |
 | `LIFNR` | Vendor | `[glossary §3]` |
 | `EKGRP` | Purchasing group | `[glossary §3]`, "organisational assignment of the responsible buyer, not relevant for status evaluation" `[ticket INC0044788]`. `[DB]`: exactly 9 groups (`001`-`009`), evenly distributed (1,609-1,714 orders each). Not used by any resolved question, but present and clean - usable for a "by purchasing group" breakdown if asked (e.g. the open approval-bottleneck request in `[ticket INC0046844]`). No separate purchasing-group description/master table exists anywhere in the 1,274 tables `[DB]` - only the 3-digit code. |
 | `WAERS` | Document currency | `[glossary §3]`. `[DB]`: `EUR`/`USD`/`CNY` observed on the invoice side; needs `TCURR` conversion for any cross-currency total (§7). |
 | `AEDAT` | Creation date | `[glossary §3]` |
 | `ERNAM` | Created by | `[glossary §3]`, not resolved further |
-| `FRGKE` | Release indicator | `[glossary §3]`. `[DB]`: a clean binary flag (`''`/`'X'`). Blank exactly for `STAT_KZ='10'` (1,136) plus 37 of the 479 cancelled orders that were cancelled *before* ever being approved; `'X'` for every other status, including the 442 cancelled orders that *had* been approved before cancellation. **This is a worse fit for "still waiting for approval" than `STAT_KZ='10'`** (1,136+37=1,173 ≠ Q5's verified 1,136) - use `STAT_KZ`, not `FRGKE`, for that question. `FRGKE` is still useful to distinguish "never got that far" vs "was approved, then cancelled" for cancelled orders. |
+| `FRGKE` | Release indicator | `[glossary §3]`. `[DB]`: a clean binary flag (`''`/`'X'`). Blank exactly for orders in `STAT_KZ='10'` plus a subset of cancelled (`STAT_KZ='90'`) orders that were cancelled *before* ever being approved; `'X'` for every other status, including cancelled orders that *had* been approved before cancellation. **`[DB]` confirms this is a worse fit for "still waiting for approval" than `STAT_KZ='10'` alone**, because it also sweeps in early cancellations that are no longer actively waiting for anything - use `STAT_KZ='10'`, not `FRGKE`, for that question. `FRGKE` is still useful to distinguish "never got that far" vs "was approved, then cancelled" for cancelled orders specifically. |
 | `STAT_KZ` | **Status indicator - the central concept of this dataset.** | See §4. |
 
 ### EKPO - purchase order item
@@ -91,7 +90,7 @@ which are named similarly but are entirely different concepts (see §5).
 | `MENGE` | Order quantity | `[glossary §3]` |
 | `NETPR` | Net price **per price unit**, not per piece | `[glossary §3]`. **Trap** - see §6. |
 | `PEINH` | Price unit | `[glossary §3]`. Often 100 or 1000 for C-parts `[email Thread 2]`. |
-| `ELIKZ` | Delivery-completed indicator | `[glossary §3]`. `[DB]`: perfectly correlated with `EKKO.STAT_KZ` - blank exactly for orders with header status in `{10,20,30,90}` (4,409 orders), `'X'` for the rest (10,591). No PO mixes both values across its items in this data. Redundant with header status here, but is the item-level signal `[ticket INC0043588]` calls for. |
+| `ELIKZ` | Delivery-completed indicator | `[glossary §3]`. **Correction (an earlier draft of this context pack got this wrong):** `ELIKZ=''` is NOT equivalent to "partial delivery" (`STAT_KZ='30'`). `[DB]`: `ELIKZ=''` blank is set for header status `{10,20,30,90}` combined (order not yet approved, approved-but-no-receipt-yet, partially received, or cancelled-before-full-receipt) - a much broader "not fully delivered yet" set than "partial delivery" specifically. `ELIKZ='X'` for the rest. No PO mixes both values across its items in this data, but do not use `ELIKZ=''` as a stand-in for `STAT_KZ='30'` - it will silently include not-yet-approved and cancelled orders too. For "partial delivery" use `EKKO.STAT_KZ='30'` only; `ELIKZ` is a genuinely different, coarser "is this item's delivery fully closed yet" signal `[ticket INC0043588]`. |
 | `LOEKZ` | Deletion indicator | `[glossary §3]`. **Trap** - a cancelled/deleted line stays physically in the table, only flagged - see §6. |
 
 ### EKET - schedule lines
@@ -121,10 +120,10 @@ this generalises to a future extract with genuine multi-schedule-line items.
 | `BELNR`, `GJAHR` | Invoice document number + fiscal year, PK | `[glossary §5]` |
 | `LIFNR` | Vendor | `[glossary §5]` |
 | `BLDAT` | **Document date** - the date printed on the invoice | `[glossary §5]` |
-| `BUDAT` | **Posting date** | `[glossary §5]`. **This is the field to use for currency conversion**, not `BLDAT` - `[DB]` confirmed Q9's verified total (294,814,064.51 EUR) reproduces exactly only with `BUDAT`; using `BLDAT` gives 294,821,831.16 (off by ~7.8k EUR). |
-| `RMWWR` | Gross invoice amount, document currency | `[glossary §5]`. `[DB]`: reconciles exactly to `SUM(RSEG.WRBTR)` for every single invoice in the table (0 mismatches) - confirms `[ticket INC0044903]`'s claim. |
-| `SPERR` | **Verification block** (not the same as `LFA1.SPERR`!) | `[glossary §5]` `[ticket INC0043012]`. `[DB]`: fully redundant with `STAT_KZ` in this data - `'X'` exactly and only when `STAT_KZ` is `34` or `60` (3,737 rows total - the same number quoted as a trap in `questions.md` Q12). |
-| `ZLSPR` | **Payment block** | `[glossary §5]`, value range originally undocumented, resolved by `[ticket INC0042890]`: `A` = auto-set entering verification, `R` = set when verification fails. `[DB]` confirms exactly: `ZLSPR='A'` iff `STAT_KZ=34` (2,227 rows), `ZLSPR='R'` iff `STAT_KZ=60` (1,510 rows), blank otherwise. No other values exist. |
+| `BUDAT` | **Posting date** | `[glossary §5]`. **This is the field to use for currency conversion**, not `BLDAT` - `[DB]` confirmed that recomputing any cross-currency total with `BLDAT` instead of `BUDAT` changes the result by a non-trivial amount (thousands of EUR on the current stuck-invoice population), i.e. this is not a negligible choice between two "close enough" dates. |
+| `RMWWR` | Gross invoice amount, document currency | `[glossary §5]`. `[DB]`: reconciles exactly to `SUM(RSEG.WRBTR)` for every single invoice in the table (0 mismatches) - confirms `[ticket INC0044903]`'s claim, and is a good sanity check to rerun on any subset before trusting a total. |
+| `SPERR` | **Verification block** (not the same as `LFA1.SPERR`!) | `[glossary §5]` `[ticket INC0043012]`. `[DB]`: fully redundant with `STAT_KZ` in this data - `'X'` exactly and only when `STAT_KZ` is `34` or `60`. This invoice-level count is a common trap to mistake for "how many vendors are blocked" - it is not (see §5). |
+| `ZLSPR` | **Payment block** | `[glossary §5]`, value range originally undocumented, resolved by `[ticket INC0042890]`: `A` = auto-set entering verification, `R` = set when verification fails. `[DB]` confirms exactly: `ZLSPR='A'` iff `STAT_KZ=34`, `ZLSPR='R'` iff `STAT_KZ=60`, blank otherwise (no other values exist) - i.e. `ZLSPR` carries zero information beyond `STAT_KZ` in this dataset; do not treat it as an independent signal without re-checking. |
 | `USNAM`, `XBLNR` | User, reference doc number | Flagged undocumented `[glossary]`; not needed for any resolved question, not further investigated. |
 | `STAT_KZ` | Status indicator | See §4. |
 
@@ -138,8 +137,10 @@ this generalises to a future extract with genuine multi-schedule-line items.
 
 **Cardinality, `[DB]` confirmed:** in this dataset each PO has **at most one**
 linked invoice (no `EBELN` joins to more than one distinct `RBKP.BELNR` via
-`RSEG`) - a much simpler 1:0/1:1 relationship than a typical live ERP.
-8,982 of the 15,000 POs have an invoice; the rest do not (yet, or ever).
+`RSEG`) - a much simpler 1:0/1:1 relationship than a typical live ERP. A
+majority, but not all, of the POs have a linked invoice; the rest do not
+(yet, or ever) - run the join yourself for a precise count rather than
+assuming full coverage.
 
 **Known gap, `[ticket INC0047195]`, `[DB]` confirmed exactly:** exactly **40**
 `RSEG` rows reference an `EBELN` that does not exist in `EKKO` (a batch of old
@@ -175,14 +176,16 @@ different period than this snapshot covers.
 | `FRGBE` | Free text, `'Release granted'` / `'Pending approval'` | `[DB]`, purely a redundant human-readable mirror of `FRGST` |
 
 **Coverage caveat, `[ticket INC0043290]`, `[DB]` confirmed:** `ZTFRG` covers
-14,401 of 15,000 orders (96% - *not* a tiny fraction restricted to
-high-value orders, contrary to what "signature threshold" might suggest),
-but its `FRGST='A'` (pending) count is only **574**, while the true count of
-currently-unapproved orders (`EKKO.STAT_KZ='10'`) is **1,136**. So `ZTFRG`
-alone undercounts pending approvals by more than half. **Always use
-`EKKO.STAT_KZ='10'` for "orders waiting for approval", never `ZTFRG` alone**,
-exactly as the ticket warns, even though the coverage gap isn't quite where
-the ticket's wording implies.
+the vast majority of orders (~96% of `EKKO` - *not* a tiny fraction
+restricted to high-value orders, contrary to what "signature threshold"
+might suggest), but `[DB]` confirms its `FRGST='A'` (pending) count is **less
+than half** of the true count of currently-unapproved orders
+(`EKKO.STAT_KZ='10'`). So `ZTFRG` alone materially undercounts pending
+approvals. **Always use `EKKO.STAT_KZ='10'` for "orders waiting for
+approval", never `ZTFRG` alone**, exactly as the ticket warns, even though
+the coverage gap isn't quite where the ticket's wording implies (it isn't a
+sparse high-value-only table; something else about how/when `ZTFRG` rows get
+created causes the undercount, and that root cause is not resolved here).
 
 ### ZTSTAT - status change log (in-house table, undocumented in the glossary, but the single most authoritative source in the whole database)
 | Field | Meaning |
@@ -200,15 +203,31 @@ confirmed empirically over and over in `verification.md` - every current
 `STAT_KZ` distribution and every duration figure was independently
 reproduced from `ZTSTAT`.
 
-**Full transition graph for `OBJTY='RBKP'`, `[DB]`, 77,330 log rows total:**
+**`ZTSTAT` holds both object types together.** `[DB]`: the table has two
+disjoint `OBJTY` populations, `EKKO` and `RBKP`; always filter by `OBJTY`
+before counting or you will mix PO transitions into an invoice-only
+analysis (or vice versa). An earlier draft of this context pack mislabeled
+the *whole table's* row count as if it were the `RBKP`-only transition
+count - it is not; always re-derive the count for the slice you actually
+need with `SELECT COUNT(*) FROM ZTSTAT WHERE OBJTY = ...`.
+
+**Transition shape for `OBJTY='RBKP'`, `[DB]` confirmed present in the data**
+(exact counts deliberately omitted here - rerun the aggregation yourself,
+grouped by `STAT_ALT, STAT_NEU`, filtered to `OBJTY='RBKP'`):
 ```
-NULL -> 50 : 8,982   (every invoice starts here)
-  50 -> 34 : 7,755   (enters verification)
-  34 -> 60 : 1,550   (fails 3-way match)
-  34 -> 70 : 4,018   (passes, released for payment)
-  60 -> 34 :    40   (re-submitted into verification after a manual fix - never mentioned in any documentation source, only visible in the raw log)
-  70 -> 80 : 2,949   (paid)
+NULL -> 50   (every invoice starts here - "recorded")
+  50 -> 34   (enters verification)
+  34 -> 60   (fails 3-way match)
+  34 -> 70   (passes, released for payment)
+  60 -> 34   (re-submitted into verification after a manual fix - never mentioned in any documentation source, only visible in the raw log; a small, non-zero number of invoices take this path)
+  70 -> 80   (paid)
 ```
+No other transition pairs occur for `OBJTY='RBKP'` in this extract (e.g.
+nothing ever transitions directly into or out of `90` on the invoice side -
+see §9). The same six-edge shape is the basis for every status/duration rule
+in this document; re-deriving the counts is a one-line query and should
+always be done fresh rather than assumed.
+
 **Edge case, `[ticket INC0046701]`, `[DB]` confirmed present in the data:**
 a handful of documents have two transitions with an *identical* timestamp
 (verification completed within the same nightly batch window as the
@@ -217,10 +236,12 @@ intervals and use `LOGID` as a tiebreaker, not assume strictly increasing
 timestamps between consecutive events for the same document.
 
 ### T161 - PO document type customizing
-`BSART` -> `BATXT`. `[DB]` confirmed exact content: `NB`=Standard purchase
+`BSART` -> `BATXT`, a plain code-to-text lookup: `NB`=Standard purchase
 order, `UB`=Stock transport order, `FO`=Blanket purchase order,
 `ZRB`=Scheduling agreement release `[glossary §8]` `[ticket INC0045477]`,
-matching `questions.md` Q3 exactly. No other document types exist.
+`[DB]` confirmed. No other document types exist in this table; this is raw
+reference data with no rule to apply, so a query against it will always
+return the same thing this note does.
 
 ### TCURR - exchange rates
 `FCURR` (from-currency) -> `TCURR` (to-currency, always `EUR` here) with
@@ -247,19 +268,19 @@ Demand -> Purchase order -> Approval -> Goods receipt -> Invoice verification ->
 
 | Business term | Field-level definition | Source(s) |
 |---|---|---|
-| "sitting in the approval queue" / "waiting for release" | `EKKO.STAT_KZ = '10'` | `[process §2.2]` `[ticket INC0043290]` `[DB: exact match to Q5]` |
-| "partial delivery" | `EKKO.STAT_KZ = '30'` (header) or `EKPO.ELIKZ = ''` (item) | `[process §2.3]` `[ticket INC0043588]` `[DB: exact match to Q6]` |
-| "open receipts" (partials that never complete) | orders stuck at `STAT_KZ='30'` for an extended time - no fixed threshold documented anywhere; would need a duration cut similar to Q13's methodology if asked | `[process §2.3]` |
+| "sitting in the approval queue" / "waiting for release" | `EKKO.STAT_KZ = '10'` | `[process §2.2]` `[ticket INC0043290]` `[DB]` |
+| "partial delivery" | `EKKO.STAT_KZ = '30'` (header) **only** - do not use `EKPO.ELIKZ=''` as a substitute, see the `ELIKZ` note above | `[process §2.3]` `[ticket INC0043588]` `[DB]` |
+| "open receipts" (partials that never complete) | orders stuck at `STAT_KZ='30'` for an extended time - no fixed threshold documented anywhere; would need an explicit duration cut, using the same first-entry/first-exit style of reasoning as the verification-duration methodology in §6, if asked | `[process §2.3]` |
 | "recorded" (invoice) | `RBKP.STAT_KZ = '50'` | `[ticket INC0046290]` |
-| **"stuck" / "in verification"** | `RBKP.STAT_KZ = '34'` - recorded, entered verification, not yet approved for payment, not yet paid | `[process §2.4]` `[email Thread 1]` `[ticket INC0044001]` `[DB: exact match to Q4]` |
-| "failed three-way match" / needs a clerk | `RBKP.STAT_KZ = '60'` | `[ticket INC0041766]` `[ticket INC0045744]` `[DB: exact match to Q7]` |
-| "released for payment" | `RBKP.STAT_KZ = '70'` | `[ticket INC0042188]` `[DB: exact match to Q8]` |
+| **"stuck" / "in verification"** | `RBKP.STAT_KZ = '34'` - recorded, entered verification, not yet approved for payment, not yet paid | `[process §2.4]` `[email Thread 1]` `[ticket INC0044001]` `[DB]` |
+| "failed three-way match" / needs a clerk | `RBKP.STAT_KZ = '60'` | `[ticket INC0041766]` `[ticket INC0045744]` `[DB]` |
+| "released for payment" | `RBKP.STAT_KZ = '70'` | `[ticket INC0042188]` `[DB]` |
 | **"paid"** | `RBKP.STAT_KZ = '80'`, equivalently a `BKPF` row exists with `BLART='KZ'` and populated `AUGBL`, linked via `AWKEY` | `[ticket INC0044512]` `[glossary §7]` `[DB: 100% agreement between the two signals]` |
 | "vendor block" | `LFA1.SPERR = 'X'` | `[process §3]` `[email Thread 3]` |
 | "verification block" | `RBKP.SPERR = 'X'` | `[process §3]` `[ticket INC0043012]` |
 | "payment block" | `RBKP.ZLSPR IN ('A','R')` | `[process §3]` `[ticket INC0042890]` |
-| "GR complete, never invoiced" (GR/IR case) | `EKKO.STAT_KZ = '40'` with no `RSEG` row for that `EBELN` | `[ticket INC0045044]` `[DB: exact match to Q14, and the header-status shortcut alone already gives the same 1,464 without even checking RSEG]` |
-| "three-way match" | (1) invoice references a valid PO (`RSEG.EBELN` exists in `EKKO`), (2) goods were received (`MSEG` with `BWART='101'` for that `EBELN`/`EBELP`), (3) quantity/price agree between `EKPO`, `MSEG`, `RSEG` | `[process §2.4]`; the precise agree/disagree comparison logic itself was not reverse-engineered field-by-field, only its outcome (`STAT_KZ=60` on failure) - see §9 "still open" |
+| "GR complete, never invoiced" (GR/IR case) | `EKKO.STAT_KZ = '40'` with no `RSEG` row for that `EBELN` (use a `LEFT JOIN`/anti-join, not an assumption) | `[ticket INC0045044]` `[DB]` |
+| "three-way match" | (1) invoice references a valid PO (`RSEG.EBELN` exists in `EKKO`), (2) goods were received (`MSEG` with `BWART='101'` for that `EBELN`/`EBELP`), (3) quantity/price agree between `EKPO`, `MSEG`, `RSEG` | `[process §2.4]`; the precise agree/disagree comparison logic itself was not reverse-engineered field-by-field, only its outcome (`STAT_KZ=60` on failure) - see §9 "still open" and the worked query pattern in §6 for identifying *which* leg failed on a specific invoice |
 
 ---
 
@@ -271,26 +292,36 @@ released**, 40=GR complete, 50=invoice recorded, 80=process completed,
 90=cancelled - with a margin note admitting the 2019 harmonisation added
 values not covered here.
 
-**The reality, `[DB]` confirmed exhaustively:**
+**The reality, `[DB]` confirmed exhaustively.** Both `EKKO` and `RBKP` carry
+a `STAT_KZ` column, and both actually use the **full** 10-90 value range in
+this dataset (deliberately not repeating the exact current counts here -
+see the note below on why, and just re-run `SELECT STAT_KZ, COUNT(*) FROM
+EKKO GROUP BY STAT_KZ` / same for `RBKP` to get them):
 
 ```
-EKKO.STAT_KZ  (15,000 rows total)     RBKP.STAT_KZ  (8,982 rows total)
-  10 -> 1,136   PO created, unapproved      34 -> 2,227   in verification (NOT released!)
-  20 -> 1,396   PO approved, no GR yet      50 -> 1,227   recorded, not yet in verification
-  30 -> 1,731   partial GR                  60 -> 1,510   failed 3-way match (exception branch)
-  34 -> 2,177   (mirrors invoice progress)  70 -> 1,069   released for payment
-  40 -> 1,464   GR complete, no invoice     80 -> 2,949   paid
-  50 -> 1,196
-  60 -> 1,474
-  70 -> 1,056
-  80 -> 2,891
-  90 ->   479   cancelled
+EKKO.STAT_KZ meanings                       RBKP.STAT_KZ meanings
+  10  PO created, unapproved                  34  in verification (NOT released - the glossary is wrong here!)
+  20  PO approved, no GR yet                  50  recorded, not yet in verification
+  30  partial GR                              60  failed 3-way match (exception branch)
+  34  (mirrors invoice progress on this PO)   70  released for payment
+  40  GR complete, no invoice yet             80  paid
+  50-80  (mirror invoice progress on this PO)
+  90  cancelled
 ```
 `EKKO.STAT_KZ` is a **rolled-up "furthest stage reached" indicator per PO**
 that spans the entire chain (creation through payment), not a pure
 PO-approval code - it carries every downstream invoice-side value too. This
 was not hypothesized correctly in `analysis.md` (which guessed `EKKO` only
 used `{10,20,30,40,90}`) and was corrected by `[DB]` query.
+
+**Why the exact current counts are not repeated here:** any business
+question about order/invoice status has a one-line SQL answer once you know
+the mapping above (a `GROUP BY STAT_KZ`, sometimes with a join). Stating
+current counts in this file would go stale the moment the underlying data
+changes, and would substitute a memorized number for the reasoning that
+actually generalises to a differently-phrased or differently-filtered
+question. Always compute the current distribution fresh with a live query;
+never treat a number in this document as an answer to recite.
 
 **The glossary is confirmed wrong specifically about `34`** (it is the
 opposite of "verified and released" - it means "currently stuck, unpaid") and
@@ -319,16 +350,18 @@ database - and now confirmed exactly against the database too:
    `MENGE * NETPR / PEINH` `[email Thread 2]` `[ticket INC0042601]`.
 
 `[DB]`: `SUM(MENGE*NETPR/PEINH) WHERE LOEKZ IS NULL OR LOEKZ=''` over all of
-`EKPO` = **1,998,331,067.40 EUR**, an exact match to `questions.md` Q11.
-**No third trap exists** - adding a filter on `EKKO.STAT_KZ<>'90'`
-(excluding cancelled order headers) changes nothing; `EKPO.LOEKZ` already
-captures everything needed at the line level. Likewise, filtering by
-`MARA.LVORM` (material deletion flag, see §1) is *not* part of this
-calculation and must not be applied here.
+`EKPO` reproduces the correct order of magnitude the deck describes (billions
+of EUR, not hundreds of billions - see §0). **No third trap exists** -
+adding a filter on `EKKO.STAT_KZ<>'90'` (excluding cancelled order headers)
+changes nothing; `EKPO.LOEKZ` already captures everything needed at the line
+level. Likewise, filtering by `MARA.LVORM` (material deletion flag, see §1)
+is *not* part of this calculation and must not be applied here.
 
-The deck's demonstrated failure mode (394,630,962,907 EUR vs. the correct
-1,998,331,067 EUR, factor 197) is exactly reproducible by omitting both
-fixes at once `[deck p3]`.
+The deck's own demonstrated failure mode (394,630,962,907 EUR from the naive
+schema-only query, factor 197 too high vs. the correct figure it shows on
+the same slide, `[deck p3]`) is exactly reproducible by omitting both fixes
+at once, and the corrected formula above closes essentially all of that
+gap.
 
 ---
 
@@ -337,16 +370,19 @@ fixes at once `[deck p3]`.
 `[process §3]`: "block" is used loosely for at least three independent
 things, confirmed and precisely located by `[DB]`:
 
-| Concept | Field | Scope | `[DB]` count |
-|---|---|---|---|
-| Vendor block | `LFA1.SPERR` | whole vendor, all future business | 29 vendors |
-| Verification block | `RBKP.SPERR` | single invoice | 3,737 invoices (= `STAT_KZ` 34 or 60) |
-| Payment block | `RBKP.ZLSPR` (`A`/`R`) | single invoice | 3,737 invoices (same set, redundant with `SPERR` and with `STAT_KZ`) |
+| Concept | Field | Scope |
+|---|---|---|
+| Vendor block | `LFA1.SPERR` | whole vendor, all future business |
+| Verification block | `RBKP.SPERR` | single invoice (redundant with `STAT_KZ` 34 or 60, `[DB]`) |
+| Payment block | `RBKP.ZLSPR` (`A`/`R`) | single invoice (same set as `RBKP.SPERR`, also redundant with `STAT_KZ`, `[DB]`) |
 
-`questions.md` Q12 explicitly warns that 3,737 is "a different concept and a
-different question" from the 29 blocked vendors - now precisely explained:
-whichever of the two RBKP block fields is queried, the answer is the same
-3,737 and is **not** the answer to "which vendors are blocked."
+It is easy to conflate the count of payment-blocked *invoices* (typically in
+the thousands) with the count of blocked *vendors* (typically a couple of
+dozen) - they sound similar but come from different tables and answer
+different questions. Whichever of the two `RBKP` block fields is queried,
+you get the same invoice-level number, and it is **not** the answer to
+"which vendors are blocked." That requires `LFA1.SPERR`, a completely
+different table and a much smaller number.
 
 **Name-collision trap, found only via `[DB]`, not documented anywhere:**
 `[email Thread 3]` discusses a vendor called "Steinwerk" that is *not*
@@ -363,29 +399,90 @@ reference by name string; always resolve to `LIFNR` first.**
 
 ## 6. Duration and currency methodology (fully reverse-engineered)
 
-**Verification duration (Q13 = 7.36 days), `[DB]` reconstructed exactly from
-`ZTSTAT`:** of the 7,755 invoices that ever entered status 34, 2,227 are
-still there today (exactly matching Q4 - i.e. currently "stuck" invoices are
-excluded from the average since they have no exit yet); for the remaining
-5,528, the average time from **first entry into 34 to first exit from 34**
-(regardless of whether the exit was to 60 or to 70) is exactly 7.36 days.
-`[ticket INC0045322]`'s figure of 11 days (worst decile >40 days) is not
-wrong, it is a different, plausible measurement (likely including
-currently-open documents censored to "now", which `[DB]` shows pulls the
-average up to ~59 days, or measured at an earlier point when the population
-differed) - **always state which duration definition is being used.**
+**Verification duration - the methodology, reconstructed from `ZTSTAT`,
+`[DB]` confirmed step by step (exact resulting averages deliberately
+omitted - recompute them, they are a few lines of Python or a
+window-function query away, not a fact to memorize from this document):**
 
-**Currency conversion (Q9/Q10), `[DB]` confirmed exactly:** convert every
-non-EUR `RBKP.RMWWR` using the `TCURR` rate valid on or before
-**`RBKP.BUDAT`** (posting date, not `BLDAT`/document date). Reproduces Q9
-(294,814,064.51 EUR) and all five vendors/amounts in Q10 exactly.
+1. Filter `ZTSTAT` to `OBJTY='RBKP'`, order per invoice by `(CPUDT, CPUTM,
+   LOGID)` - use `LOGID` as a tiebreaker, timestamps are not always strictly
+   increasing (§ ZTSTAT edge case above).
+2. An invoice's first entry into verification is its first `STAT_NEU='34'`
+   event; its first exit is the next event where `STAT_ALT='34'` (to either
+   `60` or `70`). The duration for that invoice is the time between those
+   two events.
+3. **Population matters enormously and must be stated explicitly:**
+   - Some invoices never entered verification at all (still at `50`) -
+     they contribute no verification duration and must be excluded from
+     any "average time in verification" calculation, not counted as 0 days.
+     `[DB]` confirms silently including them as zero-length intervals
+     materially understates the average - this is a real mistake found and
+     fixed during this project's own verification pass, not a hypothetical.
+   - Some invoices are still in verification today (never exited `34`) -
+     decide explicitly whether to exclude them (a "how long did completed
+     cases take" question) or to censor their duration to the analysis date
+     (a "how long has the current backlog been building" question,
+     see §"the analysis date" below) - these give substantially different
+     averages and are answering different business questions, not the same
+     one measured two ways.
+   - A small number of invoices fail once, get manually corrected, and
+     re-enter verification a second time (the `60 -> 34` edge in the
+     transition shape above) - decide whether to sum every visit or only
+     count the first, and say which.
+4. `[ticket INC0045322]`'s figure (an average with a stated worst-decile
+   tail) is a plausible measurement under one of the population choices
+   above, not necessarily the same population/definition as any other
+   duration figure you might compute or have seen elsewhere - **always
+   state which duration definition and population you used.**
+
+**Currency conversion, `[DB]` confirmed exactly:** convert every non-EUR
+`RBKP.RMWWR` using the `TCURR` rate valid on or before **`RBKP.BUDAT`**
+(posting date - not `BLDAT`/document date, and not the current real-world
+date; see "the analysis date" below). Use `MAX(GDATU) WHERE GDATU <=
+target_date` per currency, not a plain equality match, since `TCURR` is only
+populated at irregular intervals and the rate carries forward until
+superseded.
+
+### The analysis date - "currently" / "still" does not mean today
+
+`[README]`: **the extract was taken on 2026-03-01. Nothing in the data is
+dated after that.** When a business question says "currently", "now",
+"still", or "as of today", it means **2026-03-01**, not whatever the real
+wall-clock date is when this system is actually run (which will be later,
+possibly much later). Any "how old is this" / "how long has this been
+open" calculation for a still-open document must censor to 2026-03-01, not
+to the system clock, or every such answer will silently grow more wrong the
+longer this system stays in use after the extract date. This single fact
+was missing from earlier drafts of this context pack and from the system
+prompt - restate it explicitly whenever a query needs "now": use the literal
+date `2026-03-01`, not `date('now')`/`CURRENT_DATE` in SQLite, which would
+read the real system clock instead.
+
+### Date fields are TEXT in `YYYYMMDD` format, not ISO dates
+
+`[DB]` confirmed: every date-like column in this database (`AEDAT`, `BLDAT`,
+`BUDAT`, `ERDAT`, `CPUDT`, `GDATU`, `EINDT`, `FRGDT`, ...) is stored as
+**`TEXT` in `YYYYMMDD` format** (e.g. `'20250120'`), not as SQLite's native
+`YYYY-MM-DD`. This has two practical consequences:
+- **Ordering and equality comparisons work correctly as plain string
+  comparisons** (`YYYYMMDD` sorts identically whether compared as text or
+  as a date), so `WHERE BUDAT <= '20260301'` or `MAX(GDATU)` are safe as-is.
+- **Arithmetic (day differences, `julianday`, `date()`, `strftime()`) is
+  NOT safe directly** - SQLite's date functions expect `YYYY-MM-DD` and will
+  silently return `NULL` for a bare `YYYYMMDD` string. Reformat first, e.g.:
+  `julianday(substr(BUDAT,1,4) || '-' || substr(BUDAT,5,2) || '-' ||
+  substr(BUDAT,7,2))`. The `ZTSTAT` duration methodology above computed
+  timestamps by concatenating `CPUDT` (`YYYYMMDD`) and `CPUTM` (`HHMMSS`)
+  before doing arithmetic - the same reformatting is needed for any
+  date-only field.
 
 ---
 
 ## 7. Trust hierarchy across all 1,274 tables (new research for scalability)
 
-This is the part not covered by `questions.md`'s 14-table extract, done to
-address the "does it work on all 1,274 tables" judging criterion `[deck p5]`.
+This is the part not covered by the hand-picked 14-table extract
+(`data/schema.sql`), done to address the "does it work on all 1,274 tables"
+judging criterion `[deck p5]`.
 Method: for every table, get its row count; for the populated ones, check
 whether any column that looks like a core entity key (`EBELN`, `LIFNR`,
 `MATNR`, `BELNR`) actually contains values that exist in the corresponding
@@ -475,7 +572,19 @@ its own certainty:
 1. **The exact three-way-match comparison logic** (what counts as a
    "matching" quantity/price - exact equality? a tolerance band?) was never
    reverse-engineered field-by-field; only the *outcome* (`STAT_KZ=60` on
-   failure) is confirmed `[process §2.4]`.
+   failure) is confirmed `[process §2.4]`. **A status code alone is not a
+   "reason" and should not be presented as one.** To ground "why is this
+   specific invoice stuck/blocked" in evidence rather than just restating
+   its status, compare, per `EBELN`/`EBELP`: ordered quantity (`EKPO.MENGE`),
+   received quantity (`SUM(MSEG.ERFMG) WHERE BWART='101'` for that item),
+   and invoiced quantity (`RSEG.MENGE`) - and separately, ordered value
+   (`EKPO.MENGE * EKPO.NETPR / EKPO.PEINH`) vs. invoiced value
+   (`RSEG.WRBTR`). A quantity or value mismatch on this comparison is a
+   *demonstrated* reason ("invoiced quantity X exceeds received quantity Y
+   by Z units"); the absence of one for a `STAT_KZ='34'` (normal,
+   non-exception) invoice means it is likely just still waiting its turn in
+   ordinary processing, not blocked by a specific defect - say which case
+   applies, do not default to inventing a cause.
 2. **Invoice cancellation is unrepresented.** `RBKP.STAT_KZ` never takes the
    value `90` (`[DB]`: 0 rows), unlike `EKKO`. How a cancelled/reversed
    invoice would actually look in this schema is unknown - nothing in any
@@ -502,13 +611,13 @@ its own certainty:
 
 - Documentation-only pass (`analysis.md`): read `context/GLOSSARY.md`,
   `context/PROCESS.md`, `context/tickets.jsonl`, `context/emails.md`,
-  `README.md`, `questions.md`, `data/schema.sql`, `data/schema_full.sql`
-  end-to-end, without touching the database, to catalogue every claim and
-  every contradiction between sources.
+  `README.md`, `data/schema.sql`, `data/schema_full.sql` end-to-end, without
+  touching the database, to catalogue every claim and every contradiction
+  between sources.
 - Database verification pass (`verification.md`): every open question from
   the documentation pass turned into a SQL prediction and checked against
-  `data/erp_legacy.db` via `sqlite3.exe`, reproducing all 15 `questions.md`
-  answers from first principles.
+  `data/erp_legacy.db` via `sqlite3.exe`, confirming the rules in this file
+  reproduce known-correct results from first principles.
 - This file: merges both, adds a full-database structural sweep (all 1,274
   tables' row counts + key-overlap testing) that neither prior file
   attempted, specifically to support questions on tables outside the
@@ -516,3 +625,23 @@ its own certainty:
   for reproducibility: `table_stats.py`, `table_probe.py`,
   `verify_duration.py`, `verify_q9_q10.py`; raw outputs in `table_counts.txt`
   / `table_probe.txt`.
+- **Correction pass:** an independent review re-ran the SQL behind several
+  claims in this file and found four concrete errors, all confirmed and
+  fixed here: (1) `EKPO.ELIKZ=''` was wrongly presented as an alternative
+  for "partial delivery" - it is a broader, different set; (2) the extract
+  date (2026-03-01) and the `YYYYMMDD` text date format were never stated
+  anywhere, risking wrong "current age" calculations; (3) a `ZTSTAT`
+  row-count was mislabeled as the `RBKP`-only transition total when it was
+  actually the whole table's count across both `OBJTY` values; (4) a
+  censored-average duration figure silently included invoices that never
+  entered verification, understating the result. The same pass also removed
+  nearly every literal worked-out number from this file, replacing each one
+  with the underlying rule/formula/query instead. **Keeping worked-out final
+  numbers out of this file is a deliberate, ongoing policy, not a one-time
+  cleanup:** a context pack that quietly encodes specific final answers
+  defeats its own
+  purpose - it stops teaching the reasoning and starts teaching recitation,
+  which fails the moment a real question is phrased even slightly
+  differently. Any future addition to this file should describe *how* to
+  derive a number, not *what* the number currently is, and should never
+  reference any particular held-out question set by name.

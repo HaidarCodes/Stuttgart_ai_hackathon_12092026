@@ -12,6 +12,7 @@ import json
 import os
 import sqlite3
 import sys
+import time
 
 try:
     from openai import OpenAI, BadRequestError
@@ -28,6 +29,8 @@ DB_PATH = os.path.join(HERE, "data", "erp_legacy.db")
 SCHEMA_PATH = os.path.join(HERE, "data", "schema_filtered_full.sql")
 CONTEXT_PATH = os.path.join(HERE, "context.md")
 MAX_ROWS = 100
+MAX_CELL_CHARS = 2000  # protect against a single huge cell (e.g. group_concat) blowing up the context
+SQL_TIMEOUT_SECONDS = float(os.environ.get("SQL_TIMEOUT_SECONDS", "10"))
 
 DEFAULT_QUESTION = "How many supplier invoices are currently stuck in verification?"
 
@@ -73,6 +76,19 @@ you are asked may be phrased like, but are not identical to, any example
 you've seen - rederive the answer from the schema, the context pack's
 semantics, and fresh SQL every time.
 
+THE ANALYSIS DATE
+The database extract was taken on 2026-03-01 and contains nothing dated
+after that. When a question says "currently", "now", "still", or "as of
+today", it means 2026-03-01 - use that literal date for any age/duration
+calculation relative to "now", not SQLite's real system clock
+(date('now')/CURRENT_DATE would read the wrong date). Also note: every
+date-like column in this database is stored as TEXT in YYYYMMDD format
+(e.g. '20250120'), not ISO YYYY-MM-DD. String equality/ordering on
+YYYYMMDD works correctly as-is, but SQLite's date()/julianday()/strftime()
+functions require YYYY-MM-DD and will silently return NULL on a raw
+YYYYMMDD string - reformat first (e.g. via substr concatenation) before
+doing date arithmetic.
+
 KEY TRAPS TO WATCH FOR (all detailed with sources in the context pack)
 - Status codes are not what an outdated data catalogue claims; the
   authoritative source is the transition log, not a static lookup table.
@@ -111,7 +127,11 @@ data versus known-stale copies, and even that must be checked per table
 rather than assumed from the name.
 
 OUTPUT
-In the final answer: state the business rule you used in plain language,
+Answer only after at least one run_sql call has actually been executed for
+this question, unless the question is purely definitional (e.g. "what does
+status 60 mean") and genuinely needs no data lookup - if you try to finalize
+without ever having queried the database, you will be asked to verify first.
+Format the final answer as clean Markdown. State the business rule you used in plain language,
 give the result (with the underlying documents/vendors/amounts when the
 question is about a set of records), and cite the relevant context-pack
 source tag(s) (e.g. [glossary], [ticket INC0xxxxx], [email Thread N], [DB])
@@ -170,8 +190,18 @@ def open_read_only_db():
     return con
 
 
+def _bound_cell(value):
+    """Truncate an individual result cell so one huge value can't blow up the
+    model's context (e.g. a stray group_concat() or a giant text column)."""
+    if isinstance(value, str) and len(value) > MAX_CELL_CHARS:
+        return value[:MAX_CELL_CHARS] + f"... [truncated, {len(value)} chars total]"
+    return value
+
+
 def run_sql(con, query):
     """Execute one read-only statement and serialize a bounded, model-friendly result."""
+    if query is not None and not isinstance(query, str):
+        return {"error": f"'query' must be a string, got {type(query).__name__}."}
     query = (query or "").strip()
     if not query:
         return {"error": "No SQL query was provided."}
@@ -182,6 +212,11 @@ def run_sql(con, query):
     if not normalized.startswith(("SELECT", "WITH", "EXPLAIN", "PRAGMA")):
         return {"error": "Only one read-only SELECT, WITH, EXPLAIN, or PRAGMA statement is allowed."}
 
+    # Abort runaway queries instead of hanging the whole session on one bad
+    # cross join. set_progress_handler fires periodically during execution;
+    # returning truthy aborts the statement with sqlite3.OperationalError.
+    deadline = time.monotonic() + SQL_TIMEOUT_SECONDS
+    con.set_progress_handler(lambda: time.monotonic() > deadline, 1000)
     try:
         cursor = con.execute(query)
         columns = [column[0] for column in cursor.description] if cursor.description else []
@@ -191,15 +226,21 @@ def run_sql(con, query):
             rows = rows[:MAX_ROWS]
         return {
             "columns": columns,
-            "rows": [list(row) for row in rows],
+            "rows": [[_bound_cell(value) for value in row] for row in rows],
             "row_count_returned": len(rows),
             "truncated": truncated,
         }
+    except sqlite3.OperationalError as exc:
+        if "interrupted" in str(exc).lower():
+            return {"error": f"Query aborted after {SQL_TIMEOUT_SECONDS:.0f}s (too slow). Add filters/LIMIT or aggregate in SQL instead of scanning raw rows."}
+        return {"error": f"SQLite error: {exc}"}
     except sqlite3.Error as exc:
         return {"error": f"SQLite error: {exc}"}
+    finally:
+        con.set_progress_handler(None, 0)
 
 
-def call_model(client, model, messages, extra_kwargs):
+def call_model(client, model, messages, extra_kwargs, tool_choice="auto"):
     """One Chat Completions call, with request kwargs the caller can adapt.
 
     extra_kwargs may contain "_omit_temperature" (internal flag, stripped
@@ -212,7 +253,7 @@ def call_model(client, model, messages, extra_kwargs):
         "model": model,
         "messages": messages,
         "tools": TOOLS,
-        "tool_choice": "auto",
+        "tool_choice": tool_choice,
     }
     if not omit_temperature:
         kwargs["temperature"] = 0
@@ -220,14 +261,25 @@ def call_model(client, model, messages, extra_kwargs):
     return client.chat.completions.create(**kwargs)
 
 
-def answer_question(client, con, schema, context, question):
-    """Run the Chat Completions tool loop until the model supplies an answer."""
-    max_tool_rounds = int(os.environ.get("MAX_TOOL_ROUNDS", "8"))
+def answer_question(client, con, schema, context, question, history=None, on_tool_call=None):
+    """Run the Chat Completions tool loop until the model supplies an answer.
+
+    ``on_tool_call`` receives a dictionary containing the query and its
+    serialized result. The CLI prints that trace; the web frontend displays it
+    as expandable evidence cards.
+    """
+    max_tool_rounds = int(os.environ.get("MAX_TOOL_ROUNDS", "10"))
     model = os.environ.get("OPENAI_MODEL", "gpt-4o")
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT.format(schema=schema, context=context)},
-        {"role": "user", "content": question},
     ]
+    for turn in (history or [])[-8:]:
+        if isinstance(turn, dict) and turn.get("question") and turn.get("answer"):
+            messages.extend([
+                {"role": "user", "content": str(turn["question"])},
+                {"role": "assistant", "content": str(turn["answer"])},
+            ])
+    messages.append({"role": "user", "content": question})
 
     # Some reasoning models (e.g. gpt-5.x) reject function tools on the Chat
     # Completions endpoint unless reasoning_effort is explicitly turned off,
@@ -236,9 +288,12 @@ def answer_question(client, con, schema, context, question):
     # run once it's been established.
     extra_kwargs = {}
 
-    for _ in range(max_tool_rounds):
+    any_sql_executed = False  # at least one run_sql call actually made, success or not
+    nudged_for_evidence = False  # only nudge once, to avoid looping forever
+
+    def call_with_fallback(tool_choice="auto"):
         try:
-            response = call_model(client, model, messages, extra_kwargs)
+            return call_model(client, model, messages, extra_kwargs, tool_choice=tool_choice)
         except BadRequestError as exc:
             msg = str(exc)
             if "reasoning_effort" in msg and extra_kwargs.get("reasoning_effort") != "none":
@@ -247,34 +302,82 @@ def answer_question(client, con, schema, context, question):
                 extra_kwargs["_omit_temperature"] = True
             else:
                 raise
-            response = call_model(client, model, messages, extra_kwargs)
+            return call_model(client, model, messages, extra_kwargs, tool_choice=tool_choice)
 
+    for _ in range(max_tool_rounds):
+        response = call_with_fallback()
         message = response.choices[0].message
         messages.append(message)
 
         if not message.tool_calls:
-            return message.content or "I could not produce an answer."
+            if any_sql_executed or nudged_for_evidence:
+                return message.content or "I could not produce an answer."
+            # The model tried to finalize without ever consulting the
+            # database. Nudge it once instead of silently accepting an
+            # unverified answer (see SYSTEM_PROMPT's OUTPUT section).
+            nudged_for_evidence = True
+            messages.append({
+                "role": "user",
+                "content": (
+                    "Before finalizing, verify this with at least one run_sql "
+                    "call against the live database (unless the question is "
+                    "purely definitional), then answer again."
+                ),
+            })
+            continue
 
         for tool_call in message.tool_calls:
-            arguments = {}
+            raw_query = "<invalid arguments>"
             try:
                 arguments = json.loads(tool_call.function.arguments)
-                result = run_sql(con, arguments.get("query"))
-            except json.JSONDecodeError as exc:
-                result = {"error": f"Tool arguments were not valid JSON: {exc}"}
+                if not isinstance(arguments, dict):
+                    raise TypeError(f"tool arguments must be a JSON object, got {type(arguments).__name__}")
+                raw_query = arguments.get("query")
+                result = run_sql(con, raw_query)
+            except (json.JSONDecodeError, TypeError) as exc:
+                result = {"error": f"Malformed tool call, ignored: {exc}"}
+            any_sql_executed = True
 
-            print("\nSQL TOOL CALL\n-------------")
-            print(arguments.get("query", "<invalid arguments>"))
-            print("RESULT", json.dumps(result, ensure_ascii=False, default=str))
+            trace = {
+                "query": raw_query if isinstance(raw_query, str) else "<invalid arguments>",
+                "result": result,
+            }
+            if on_tool_call:
+                on_tool_call(trace)
+            else:
+                print("\nSQL TOOL CALL\n-------------")
+                print(trace["query"])
+                print("RESULT", json.dumps(result, ensure_ascii=False, default=str))
             messages.append({
                 "role": "tool",
                 "tool_call_id": tool_call.id,
                 "content": json.dumps(result, ensure_ascii=False, default=str),
             })
 
+    # Exhausted the investigation budget but the model was still calling
+    # tools. Force one last text-only answer from whatever evidence has
+    # already been gathered, instead of silently giving up.
+    messages.append({
+        "role": "user",
+        "content": (
+            f"You have reached the limit of {max_tool_rounds} SQL investigation "
+            "rounds. Answer now using only the evidence already gathered above, "
+            "and say explicitly if part of the question could not be fully "
+            "verified in that time."
+        ),
+    })
+    try:
+        response = call_with_fallback(tool_choice="none")
+        content = response.choices[0].message.content
+        if content:
+            return content
+    except Exception:
+        pass
+
     return (
         f"I reached the safety limit of {max_tool_rounds} SQL investigation rounds "
-        "before the model returned a final answer. Increase MAX_TOOL_ROUNDS and retry."
+        "and could not produce a final answer even after asking for one. "
+        "Increase MAX_TOOL_ROUNDS and retry."
     )
 
 
